@@ -20,8 +20,9 @@
 
 
 # Load needed libraries
-library("extrafont")
-library("lubridate")
+#library("extrafont")
+#library("lubridate")
+library("reshape2")
 library("tidyverse")
 
 library("dplyr")
@@ -31,17 +32,43 @@ library("ggplot2")
 stn_name <- "Willcox Bench"
 
 # Load AZMET station list
-stn_list <- read.csv("azmet-station-list-active.csv", sep = ",")
+stn_list <- read.csv("azmet-station-list.csv", sep = ",")
 
 # Load grape budbreak dates
 budbreak_dates <- read.csv("budbreak-dates.csv")
 
 # Load and transform DMI values
 dmi <- read.csv("daily-mildew-index.csv")
-dmi <- melt_csv("daily-mildew-index.csv")
+colnames(dmi) <- c("Tmin_range", 
+                   # Tmax ranges
+                   "55-60", "60-65", "65-70", "70-75", "75-80", "80-85",
+                   "85-90", "90-95", "95-100", "100-105", "105-110")
+dmi <- melt(data = dmi, na.rm = FALSE,value.name = "DMI")
+colnames(dmi)[2] <- "Tmax_range"
 
-# Source the function that will download and transform daily AZMET data
+dmi["Tmin_low"] <- as.character(dmi$Tmin_range) %>%
+  strsplit("-") %>%
+  sapply("[", 1) %>%
+  as.numeric()
+dmi["Tmin_high"] <- as.character(dmi$Tmin_range) %>%
+  strsplit("-") %>%
+  sapply("[", 2) %>%
+  as.numeric()
+dmi["Tmax_low"] <- as.character(dmi$Tmax_range) %>%
+  strsplit("-") %>%
+  sapply("[", 1) %>%
+  as.numeric()
+dmi["Tmax_high"] <- as.character(dmi$Tmax_range) %>%
+  strsplit("-") %>%
+  sapply("[", 2) %>%
+  as.numeric()
+
+# Load function to download and transform daily AZMET data
 source("azmet.daily.data.download.R")
+
+
+
+
 
 
 # DOWNLOAD AND TRANSFORM DAILY AZMET DATA  --------------------
@@ -49,7 +76,7 @@ source("azmet.daily.data.download.R")
 
 
 
-
+# if below range, value of 0
 
 
 # id excessive heat days
