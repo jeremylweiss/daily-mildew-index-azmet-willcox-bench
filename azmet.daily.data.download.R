@@ -18,7 +18,7 @@
 # oddities, and writes the station data dataframe to the current environment
 
 
-azmet.daily.data.download <- function( stn_name ) {
+azmet.daily.data.download <- function(stn_name) {
   
   
   # SETUP  -------------------- 

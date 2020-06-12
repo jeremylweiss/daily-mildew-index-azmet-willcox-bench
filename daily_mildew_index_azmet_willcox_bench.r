@@ -23,10 +23,12 @@
 #library("extrafont")
 #library("lubridate")
 library("reshape2")
-library("tidyverse")
 
+
+library("tidyverse")
 library("dplyr")
 library("ggplot2")
+
 
 # Set the AZMET station name
 stn_name <- "Willcox Bench"
