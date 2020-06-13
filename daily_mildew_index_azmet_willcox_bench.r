@@ -1,10 +1,10 @@
 
 
-# This code generates an exploratory analysis of daily mildew index (DMI) values 
+# This code generates an exploratory analysis of daily mildew index (dmi) values 
 # based on historical temperature observations at the AZMET Willcox Bench 
 # station
 
-# The DMI algorithm, 'Model 2 of 2', is described at:
+# The dmi_ref algorithm, 'Model 2 of 2', is described at:
 # http://ipm.ucanr.edu/DISEASE/DATABASE/grapepowderymildew.html
 
 # AZMET data are at: https://cals.arizona.edu/azmet/
@@ -16,51 +16,58 @@
 # 520-626-8063, jlweiss@email.arizona.edu
 
 
-# SETUP  --------------------
+# SETUP --------------------
 
 
 # Load needed libraries
-#library("extrafont")
-#library("lubridate")
 library("reshape2")
-
-
-library("tidyverse")
 library("dplyr")
 library("ggplot2")
 
 
-# Set the AZMET station name
+library("tidyverse")
+library("extrafont")
+library("lubridate")
+
+
+# Set the AZMET station name and years of interest (if different from actual
+# station data coverage)
 stn_name <- "Willcox Bench"
+yr_start <- 2017
+yr_end <- 2020
 
 # Load AZMET station list
 stn_list <- read.csv("azmet-station-list.csv", sep = ",")
 
 # Load grape budbreak dates
 budbreak_dates <- read.csv("budbreak-dates.csv")
+budbreak_dates["date"] <- as.Date.character(paste(
+  budbreak_dates$year, budbreak_dates$month, budbreak_dates$day), 
+  format = "%Y %m %d")
+budbreak_dates["doy"] <- as.numeric(format(budbreak_dates$date, "%j"))
 
-# Load and transform DMI values
-dmi <- read.csv("daily-mildew-index.csv")
-colnames(dmi) <- c("Tmin_range", 
+# Load and transform dmi_ref values
+dmi_ref <- read.csv("daily-mildew-index.csv")
+colnames(dmi_ref) <- c("Tmin_range", 
                    # Tmax ranges
                    "55-60", "60-65", "65-70", "70-75", "75-80", "80-85",
                    "85-90", "90-95", "95-100", "100-105", "105-110")
-dmi <- melt(data = dmi, na.rm = FALSE,value.name = "DMI")
-colnames(dmi)[2] <- "Tmax_range"
+dmi_ref <- melt(data = dmi_ref, na.rm = FALSE,value.name = "dmi_value")
+colnames(dmi_ref)[2] <- "Tmax_range"
 
-dmi["Tmin_low"] <- as.character(dmi$Tmin_range) %>%
+dmi_ref["Tmin_low"] <- as.character(dmi_ref$Tmin_range) %>%
   strsplit("-") %>%
   sapply("[", 1) %>%
   as.numeric()
-dmi["Tmin_high"] <- as.character(dmi$Tmin_range) %>%
+dmi_ref["Tmin_high"] <- as.character(dmi_ref$Tmin_range) %>%
   strsplit("-") %>%
   sapply("[", 2) %>%
   as.numeric()
-dmi["Tmax_low"] <- as.character(dmi$Tmax_range) %>%
+dmi_ref["Tmax_low"] <- as.character(dmi_ref$Tmax_range) %>%
   strsplit("-") %>%
   sapply("[", 1) %>%
   as.numeric()
-dmi["Tmax_high"] <- as.character(dmi$Tmax_range) %>%
+dmi_ref["Tmax_high"] <- as.character(dmi_ref$Tmax_range) %>%
   strsplit("-") %>%
   sapply("[", 2) %>%
   as.numeric()
@@ -69,19 +76,154 @@ dmi["Tmax_high"] <- as.character(dmi$Tmax_range) %>%
 source("azmet.daily.data.download.R")
 
 
+# DOWNLOAD AND TRANSFORM DAILY AZMET DATA --------------------
+
+
+stn_data <- azmet.daily.data.download(stn_name)
+
+# Retain necessary variables and data
+stn_data <- select(stn_data, date, year, month, day, doy, Tmax, Tmin, PRCtot)
+stn_data <- filter(stn_data, year >= yr_start & year <= yr_end)
+
+# Convert temperatures from Celsius to Fahrenheit, and precipitation from 
+# millimeters to inches
+stn_data$Tmax <- (1.8 * stn_data$Tmax) + 32
+stn_data$Tmin <- (1.8 * stn_data$Tmin) + 32
+stn_data$PRCtot <- stn_data$PRCtot / 25.4
+
+
+# CALCULATE DMI --------------------
+
+
+stn_data["dmi"] <- NA
+stn_data["dmi_notes"] <- NA
+
+# For nodata case
+stn_data$dmi[
+  which(is.na(stn_data$Tmin) == TRUE | is.na(stn_data$Tmax) == TRUE)
+  ] <- NA
+
+# For outside lower bounds of dmi reference table
+stn_data$dmi[
+  which(stn_data$Tmin <= min(dmi_ref$Tmin_low) | 
+          stn_data$Tmax <= min(dmi_ref$Tmax_low))
+  ] <- 0
+
+# For within bounds of dmi reference table
+breaks_tmin <- unique(c(dmi_ref$Tmin_low, dmi_ref$Tmin_high))
+breaks_tmax <- unique(c(dmi_ref$Tmax_low, dmi_ref$Tmax_high))
+for (btmin in 1:(length(breaks_tmin) - 1)) {
+  for (btmax in 1:(length(breaks_tmax) - 1)) {
+    
+    stn_data$dmi[which(
+      stn_data$Tmin >= breaks_tmin[btmin] & 
+        stn_data$Tmin < breaks_tmin[btmin + 1] &
+        stn_data$Tmax >= breaks_tmax[btmax] &
+        stn_data$Tmax < breaks_tmax[btmax + 1]
+        )] <- 
+      dmi_ref$dmi_value[which(
+        dmi_ref$Tmin_low == breaks_tmin[btmin] & 
+          dmi_ref$Tmin_high == breaks_tmin[btmin + 1] &
+          dmi_ref$Tmax_low == breaks_tmax[btmax] &
+          dmi_ref$Tmax_high == breaks_tmax[btmax + 1]
+      )]
+    
+  }
+}
+rm(btmin, btmax)
+
+# For excessive heat and leaf burn issue
+stn_data$dmi_notes[which(
+  stn_data$Tmin >= 75 & stn_data$Tmin < 80 & stn_data$Tmax >= 105
+  )] <- "excessive heat"
+stn_data$dmi_notes[which(
+  stn_data$Tmin >= 80 & stn_data$Tmax >= 95
+)] <- "excessive heat"
+
+
+# CALCULATE PMI --------------------
+
+
+# PMI (Powdery Mildex Index) is based on accumulation of DMI values from the 
+# start of the growing season, or budbreak.
+
+# According to the model, the first dusting is twelve days after initial leaf 
+# appearance or 6-inch shoot growth, whichever comes first. Subsequent dustings 
+# should occur when the difference between the current PMI and the PMI on the 
+# last dusting date equals or exceeds 1.0. When precipitation exceeds 0.10 inch, 
+# the vineyard should be re-dusted.
+
+stn_data["pmi"] <- NA
+stn_data["dusting"] <- NA
+
+for (yr in yr_start:yr_end) {
+  iyr_entries <- which(stn_data$year == yr)
+  gs_start <- min(budbreak_dates$doy[which(budbreak_dates$year == yr)])
+  
+  # PMI
+  for(entry in iyr_entries) {
+    if (stn_data$doy[entry] <= gs_start + 12) {
+      stn_data$pmi[entry] <- 0
+    } else {
+      stn_data$pmi[entry] <- stn_data$dmi[entry] + stn_data$pmi[entry - 1]
+    }
+  }
+  rm(entry)
+  
+  # Dusting
+  for(entry in iyr_entries) {
+    if (stn_data$doy[entry] < gs_start + 12) {
+      stn_data$dusting[entry] <- 0
+    } else if (stn_data$doy[entry] == gs_start + 12) {
+      stn_data$dusting[entry] <- 1
+    } else {
+      ilast_dust <- max(which(stn_data$dusting == 1))
+      if (stn_data$pmi[entry] - stn_data$pmi[ilast_dust] >= 1 |
+          stn_data$PRCtot[entry] > 0.10) {
+            stn_data$dusting[entry] <- 1
+      } else {
+        stn_data$dusting[entry] <- 0
+      }
+    
+    }
+  }
+  rm(entry)
+  
+  rm(iyr_entries, gs_start)
+}
+rm(yr)
+
+
+for (yr in yr_start:yr_end) {
+  iyr_entries <- which(stn_data$year == yr)
+  gs_start <- min(budbreak_dates$doy[which(budbreak_dates$year == yr)])
+  
+  for(entry in iyr_entries) {
+    if (stn_data$doy[entry] <= gs_start + 12) {
+      stn_data$pmi[entry] <- 0
+    } else {
+      stn_data$pmi[entry] <- stn_data$dmi[entry] + stn_data$pmi[entry - 1]
+    }
+  }
+  rm(entry)
+  
+  rm(iyr_entries, gs_start)
+}
+rm(yr)
 
 
 
 
-# DOWNLOAD AND TRANSFORM DAILY AZMET DATA  --------------------
 
 
 
 
-# if below range, value of 0
 
 
-# id excessive heat days
+
+
+
+
 
 
 

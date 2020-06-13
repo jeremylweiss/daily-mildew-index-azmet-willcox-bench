@@ -21,7 +21,7 @@
 azmet.daily.data.download <- function(stn_name) {
   
   
-  # SETUP  -------------------- 
+  # SETUP -------------------- 
   
   
   # AZMET data format changes between the periods 1987-2002 and 2003-present, as 
@@ -73,7 +73,7 @@ azmet.daily.data.download <- function(stn_name) {
   suffix <- "rd.txt"
   
   
-  # DOWNLOAD DATA  -------------------- 
+  # DOWNLOAD DATA -------------------- 
   
   
   # Recall that AZMET data are provided year-by-year. We will need to 
@@ -119,7 +119,7 @@ azmet.daily.data.download <- function(stn_name) {
   rm(i)
   
   
-  # FORMAT DATA  --------------------
+  # FORMAT DATA --------------------
   
   
   # Set the column names for the downloaded data
@@ -131,77 +131,68 @@ azmet.daily.data.download <- function(stn_name) {
   stn_data["month"] <- as.numeric(format(stn_data$date, "%m"))
   stn_data["day"] <- as.numeric(format(stn_data$date, "%d"))
   
+  # Based on previous work with AZMET data, there are several known formatting 
+  # bugs in the original / downloaded data files. We will address these 
+  # individually.
+  
+  # An odd character (".") appears at the end of some data files for some years 
+  # and some stations. In the R dataframe, this results in a row of NAs. Find 
+  # and remove these rows.
+  stn_data <- stn_data[rowSums(is.na(stn_data)) != ncol(stn_data),]
+  
+  # Replace 'nodata' values in the downloaded AZMET data with 'NA'. Values for 
+  # 'nodata' in AZMET data are designated as '999'. However, other similar 
+  # values also appear (e.g., 999.9 and 9999).
+  stn_data[stn_data == 999] <- NA
+  stn_data[stn_data == 999.9] <- NA
+  stn_data[stn_data == 9999] <- NA
+  
+  # Find and remove duplicate row entries
+  stn_data <- distinct(stn_data)
   
   
+  # ADDRESS MISSING DAILY ENTRIES --------------------
   
   
-  
-  # Based on previous work with AZMET data, there are several known
-  # formatting bugs in the original / downloaded data files. We will
-  # address these individually.
-  
-  # An odd character (".") appears at the end of some data files for 
-  # some years and some stations. In the R dataframe, this results
-  # in a row of NAs. Find and remove these rows.
-  stn_data <- stn_data[ rowSums( is.na( stn_data ) ) != ncol( stn_data ), ]
-  
-  # Replace 'nodata' values in the downloaded AZMET data with 'NA'.
-  # Values for 'nodata' in AZMET data are designated as '999'.
-  # However, other similar values also appear (e.g., 999.9).
-  stn_data[ stn_data == 999 ] <- NA
-  stn_data[ stn_data == 999.9 ] <- NA
-  stn_data[ stn_data == 9999 ] <- NA
-  
-  # Some AZMET data files have duplicate row entries. Find and
-  # remove these rows.
-  stn_data <- distinct( stn_data )
-  
-  
-  ##### ADDRESS MISSING VALUES
-  
-  
-  # Create a dataframe that mimics the actual station data, but
-  # has a full YYYYMMDD list. AZMET data can have missing date
-  # entries.
-  
-  # Create a new object that fully expands dates between the 
-  # first and last dates in the station data. 
-  date_full <- seq( first( stn_data$date ),last( stn_data$date ),by="days" )
-  
-  # Convert this new object to a dataframe that will allow us to
-  # join with the station data. Dataframe column names must match
-  # the column names in the station data in order to join.
-  stn_data_full <- data.frame( matrix( NA,
-                                       nrow=length( date_full ) ) )
-  colnames( stn_data_full ) <- "date"
-  stn_data_full$date <- date_full
-  
-  # Join the complete dates dataframe with the station data by
-  # using 'date' as the key.
-  stn_data_full <- left_join( stn_data_full,
-                              stn_data,
-                              by="date" )
-  
-  stn_data <- as_tibble( stn_data_full )
-  rm( stn_data_full )
-  
-  # Fill in values for year, month, day, and day-of-year for any
-  # date entries that may be missing in the downloaded original 
-  # data.
-  stn_data$year <- as.numeric( format( stn_data$date,"%Y" ) )
-  stn_data$month <- as.numeric( format( stn_data$date,"%m" ) )
-  stn_data$day <- as.numeric( format( stn_data$date,"%d" ) )
-  stn_data$doy <- as.numeric( format( stn_data$date,"%j" ) )
-  
-  # Do similarly with the station number value.
-  stn_data$stn_no <- stn_info$stn_no
+  # Test for presence of all days between start and end dates of station data
+  if (nrow(stn_data) != length(seq(first(stn_data$date),
+                                   last(stn_data$date),
+                                   by = "days"))) {
+    
+    # Create an empty dataframe that mimics the actual station data, but has a 
+    # full YYYYMMDD list based on the start and end of the actual station data
+    date_full <- seq(first(stn_data$date), last(stn_data$date), by = "days")
+    
+    # Convert this new object to a dataframe that will allow us to join with the 
+    # station data. Dataframe column names must match the column names in the 
+    # station data in order to join.
+    stn_data_full <- data.frame(matrix(NA, nrow = length(date_full)))
+    colnames(stn_data_full) <- "date"
+    stn_data_full$date <- date_full
+    
+    # Join the complete dates dataframe with the station data by using 'date' as 
+    # the key
+    stn_data_full <- left_join(stn_data_full, stn_data, by = "date")
+    stn_data <- as_tibble(stn_data_full)
+    rm(stn_data_full)
+    
+    # Fill in values for year, month, day, and day-of-year for any date entries 
+    # that may be missing in the downloaded original data
+    stn_data$year <- as.numeric(format(stn_data$date, "%Y"))
+    stn_data$month <- as.numeric(format(stn_data$date, "%m"))
+    stn_data$day <- as.numeric(format(stn_data$date, "%d"))
+    stn_data$doy <- as.numeric(format(stn_data$date, "%j"))
+    
+    # Do similarly with the station number value
+    stn_data$stn_no <- stn_info$stn_no
+    
+  }
   
   
-  ##### RETURN THE DATA AND CLOSE THE FUNCTION
+  # RETURN DATA AND CLOSE FUNCTION --------------------
   
   
-  return( stn_data )
+  return(stn_data)
 }
-
 
 
