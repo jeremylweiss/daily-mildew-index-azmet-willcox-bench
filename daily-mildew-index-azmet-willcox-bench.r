@@ -324,12 +324,13 @@ p <- ggplot() +
         plot.margin = unit(c(1, 1 ,1, 1), "mm"),
         plot.subtitle = (element_text(family = "Source Serif Pro", size = 12)), 
         plot.title = (element_text(face = "bold", family = "Source Serif Pro", size = 16)),
+        plot.title.position = "plot",
         strip.background = element_rect(fill = "white"),
         strip.text.x = element_text(color = "gray40", size = 12, face = "bold")
   )
 
 #  Save the figure
-ggsave(file = "daily_mildew_index_azmet_willcox_bench-20200615.eps",
+ggsave(file = "daily_mildew_index_azmet_willcox_bench-20200616.eps",
        plot = p, device = cairo_pdf, path = NULL, scale = 1,
        width = 6, height = 9, units = "in", dpi = 300) 
 
