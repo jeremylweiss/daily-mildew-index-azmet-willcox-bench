@@ -29,7 +29,7 @@ library("ggplot2")
 # Load additional font options for plotting
 font_import()
 y
-loadfonts(device = "win")
+loadfonts(device = "postscript")
 
 # Set the AZMET station name and years of interest (if different from actual
 # station data coverage)
@@ -263,32 +263,33 @@ p <- ggplot() +
   facet_wrap(~ year, ncol = 1) +
   
   # Specify axis breaks, gridlines, and limits
-  #scale_x_continuous(
-  #  breaks = c(1, 15, 32, 46, 60, 74, 
-  #             91, 105, 121, 135, 152, 166,
-  #             182, 196, 213, 227, 244),
-  #  labels = c("Jan 1", "Jan 15", "Feb 1", "Feb 15", "Mar 1", "Mar 15",
-  #             "Apr 1", "Apr 15", "May 1", "May 15", "Jun 1", "Jun 15",
-  #             "Jul 1", "Jul 15", "Aug 1", "Aug 15", "Sep 1"),
-  #  limits = c((min(filter(budbreak_dates, year >= yr_start)$doy) - 1), 245)
-  #  ) +
-  scale_x_discrete(
-    breaks = as.character(
-      c(1, 15, 32, 46, 60, 74, 
-        91, 105, 121, 135, 152, 166,
-        182, 196, 213, 227, 244)
-      ),
-    labels = c("Jan 1", "Jan 15", "Feb 1", "Feb 15", "Mar 1", "Mar 15",
-               "Apr 1", "Apr 15", "May 1", "May 15", "Jun 1", "Jun 15",
-               "Jul 1", "Jul 15", "Aug 1", "Aug 15", "Sep 1"),
-    limits = as.character(
-      c((min(filter(budbreak_dates, year >= yr_start)$doy) - 1), 245)
-    )
-  ) +
+  scale_x_continuous(
+    #breaks = c(1, 15, 32, 46, 60, 74, 
+    #           91, 105, 121, 135, 152, 166,
+    #           182, 196, 213, 227, 244),
+    #labels = c("Jan 1", "Jan 15", "Feb 1", "Feb 15", "Mar 1", "Mar 15",
+    #           "Apr 1", "Apr 15", "May 1", "May 15", "Jun 1", "Jun 15",
+    #           "Jul 1", "Jul 15", "Aug 1", "Aug 15", "Sep 1"),
+    breaks = c(1, 8, 15, 22, 32, 39, 46, 53, 
+               60, 67, 74, 81, 91, 98, 105, 112,
+               121, 128, 135, 142, 152, 159, 166, 173,
+               182, 189, 196, 203, 213, 220, 227, 234, 244),
+    labels = c("1/1", "", "1/15", "", "2/1", "", "2/15", "", 
+               "3/1", "", "3/15", "", "4/1", "", "4/15", "",
+               "5/1", "", "5/15", "", "6/1", "", "6/15", "",
+               "7/1", "", "7/15", "", "8/1", "", "8/15", "", "9/1"),
+    limits = c((min(filter(budbreak_dates, year >= yr_start)$doy) - 1), 245),
+    #minor_breaks = c(1, 8, 15, 22, 32, 39, 46, 53, 60, 67, 74, 81, 
+    #                 91, 98, 105, 112, 121, 128, 135, 142, 152, 159, 166, 173,
+    #                 182, 189, 196, 203, 213, 220, 227, 234, 244),
+    expand = c(0.0, 0.0)
+    ) +
+  
   scale_y_continuous(
     breaks = seq(from = 0, to = max(stn_data$pmi, na.rm = TRUE), by = 4),
     limits = c(0, max(filter(stn_data, doy_plot <= 245)$pmi, na.rm = TRUE)),
-    minor_breaks = seq(from = 0, to = max(stn_data$pmi, na.rm = TRUE), by = 1)
+    minor_breaks = seq(from = 0, to = max(stn_data$pmi, na.rm = TRUE), by = 1),
+    expand = c(0.06, 0.0)
   ) +
   
   # Add the graph title, subtitle, and axis labels
@@ -305,9 +306,9 @@ p <- ggplot() +
   theme(axis.line = element_blank(),
         axis.text.x = element_text(color = "gray40", size = 10),
         axis.text.y = element_text(color = "gray40", size = 10),
-        axis.ticks.x = element_line(color = "gray80", size = 0.25),
+        axis.ticks.x.bottom = element_line(color = "gray80", size = 0.25),
         axis.ticks.y = element_blank(),
-        axis.ticks.length.x = unit(2.0, "mm"),
+        axis.ticks.length.x = unit(0.0, "mm"),
         axis.ticks.length.y = unit(0.0, "mm"),
         axis.title.x = element_text(color = "gray40", size = 10),
         axis.title.y = element_text(color = "gray40", size = 10),
@@ -318,7 +319,8 @@ p <- ggplot() +
         panel.grid.major.y = element_line(color = "gray80", size = 0.25),
         panel.grid.minor.x = element_blank(),
         panel.grid.minor.y = element_line(color = "gray80", size = 0.25),
-        plot.caption = element_text(color = "gray40", hjust = 0, size = 7),
+        plot.caption = element_text(color = "gray40", hjust = 0.0, size = 7),
+        plot.caption.position = "plot",
         plot.margin = unit(c(1, 1 ,1, 1), "mm"),
         plot.subtitle = (element_text(family = "Source Serif Pro", size = 12)), 
         plot.title = (element_text(face = "bold", family = "Source Serif Pro", size = 16)),
@@ -327,16 +329,7 @@ p <- ggplot() +
   )
 
 #  Save the figure
-ggsave("daily_mildew_index_azmet_willcox_bench-20200615.svg",
-       plot = p, device = "svg", path = NULL, scale = 1,
+ggsave(file = "daily_mildew_index_azmet_willcox_bench-20200615.eps",
+       plot = p, device = cairo_pdf, path = NULL, scale = 1,
        width = 6, height = 9, units = "in", dpi = 300) 
-
-
-# Print plots to a pdf file
-pdf("daily_mildew_index_azmet_willcox_bench-20200615.pdf")
-print(p)
-dev.off()   
-  
-
-  
 
