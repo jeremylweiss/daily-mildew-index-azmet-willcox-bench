@@ -299,7 +299,7 @@ p <- ggplot() +
        y = "Powdery Mildew Index\n",
        caption = paste0("\nmodel: UC IPM model 2 (ipm.ucanr.edu/DISEASE/DATABASE/grapepowderymildew.html)",
                         "\nmeteorological data: AZMET Willcox Bench station (cals.arizona.edu/azmet)",
-                        "\nbudbreak data: Jesse Noble, Merkin Vineyards")) +
+                        "\nbudbreak data: ")) +
   
   # Further customize the figure appearance
   theme_light(base_family = "Source Sans Pro") +
