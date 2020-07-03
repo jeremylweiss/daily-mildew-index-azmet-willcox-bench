@@ -297,7 +297,7 @@ p <- ggplot() +
   ) +
   
   # Add the graph title, subtitle, and axis labels
-  ggtitle("Model-based Timing of Sulfur Dustings \nfor Powdery Mildew, 2017-2020") +
+  ggtitle("Model-based Timing of Sulfur Dustings \nfor Powdery Mildew, 2019 and 2020") +
   labs(subtitle = "AZMET Willcox Bench station",
        x = "\nDate",
        y = "Powdery Mildew Index\n",
@@ -323,7 +323,7 @@ p <- ggplot() +
         panel.grid.major.y = element_line(color = "gray80", size = 0.25),
         panel.grid.minor.x = element_blank(),
         panel.grid.minor.y = element_line(color = "gray80", size = 0.25),
-        plot.caption = element_text(color = "gray40", hjust = 0.0, size = 8),
+        plot.caption = element_text(color = "gray40", hjust = 0.0, size = 7),
         plot.caption.position = "plot",
         plot.margin = unit(c(1, 1 ,1, 1), "mm"),
         plot.subtitle = (element_text(family = "Source Serif Pro", size = 12)), 
@@ -333,8 +333,12 @@ p <- ggplot() +
         strip.text.x = element_text(color = "gray40", size = 12, face = "bold")
   )
 
+p
+
 #  Save the figure
-ggsave(file = "daily-mildew-index-azmet-willcox-bench-cvn202007.eps",
+ggsave(file = paste0("daily-mildew-index-azmet-willcox-bench-cvn202007-", 
+                     Sys.Date(),
+                     ".eps"),
        plot = p, device = cairo_pdf, path = NULL, scale = 1,
-       width = 6, height = 9, units = "in", dpi = 300) 
+       width = 6, height = 4, units = "in", dpi = 300) 
 
